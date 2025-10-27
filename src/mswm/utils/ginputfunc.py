@@ -2105,9 +2105,13 @@ def create_fcst_times(
 
     # Construct start and end times for cold start period
     if use_cold_start:
-
         fcst_start = cold_start_datetime
         fcst_end = datetime.datetime.strftime(cycle_dt - datetime.timedelta(hours=1), "%Y-%m-%d %H:%M:%S")
+
+    # Construct start and end times for intermediate AnA period
+    elif use_int_ana:
+        fcst_start = datetime.datetime.strftime(cycle_dt, "%Y-%m-%d %H:%M:%S")
+        fcst_end = datetime.datetime.strftime(cycle_dt + datetime.timedelta(hours=hind_cycle) - datetime.timedelta(hours=1), "%Y-%m-%d %H:%M:%S")
 
     # Construct start and end times based on forecast cycle
     elif ana_flag == 0:
