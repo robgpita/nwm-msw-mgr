@@ -115,10 +115,8 @@ def call_icefabric_gpkg(
 
     Parameters
     ----------
-    mod: module name string
-    all_mod: list of all modules in the formulation
     basin: basin name string
-    domain: string of name of gage domain
+    domain: domain name string (conus, ak, hi, prvi)
     output_dir: location to save gpkg
     environment: environment for icefabric API ('test' or 'oe')
     source: hydrofabric version ('hf' or 'nhf')
@@ -128,20 +126,16 @@ def call_icefabric_gpkg(
     dictionary of initial parameter estimates
     """
 
-    # Transform domain names to API format
-    domain_mappings = {
-        'conus': 'conus_hf',
-        'alaska': 'ak_hf',
-        'ak': 'ak_hf',
-        'hawaii': 'hi_hf',
-        'hi': 'hf_hf',
-        'puerto_rico': 'prvi_hf',
-        'prvi': 'prvi_hf',
-        'gl': 'gl_hf'}
-    try:
-        domain = domain_mappings.get(domain.lower())
-    except KeyError:
-        raise ValueError(f"Invalid domain: '{domain}. Valid options are {list(domain_mappings.keys())}")
+    # TODO: Domain string in endpoint not yet implemented for NHF
+
+    # Check for VPU or gage basin input string
+    if basin.lower().startswith('vpu'):
+        basin = basin[3:]
+        id_type = 'vpu_id'
+        file_prefix = 'vpu'
+    else:
+        id_type = 'site_no'
+        file_prefix = 'gauge_'
 
     # Check source value
     if source not in ('hf', 'nhf'):
@@ -152,17 +146,17 @@ def call_icefabric_gpkg(
         raise ValueError(f"Invalid environment: '{environment}'. Valid options are 'test' and 'oe'")
 
     # Set base endpoint
-    url = f"http://edfs.{environment}.nextgenwaterprediction.com:8000/v1/hydrofabric/gages-{basin}/gpkg"
+    url = f"http://edfs.{environment}.nextgenwaterprediction.com:8000/v1/hydrofabric/{basin}/gpkg"
 
     # Build query parameters
-    params = {"id_type": "hl_uri",
-              "domain": domain,
-              "layers": ["divides", "divide-attributes", "flowpaths", "flowpath-attributes", "flowpath-attributes-ml", "network", "nexus", "hydrolocations", "pois"],
+    params = {"id_type": id_type,
+              "domain": "nhf",
+              "layers": ["divides", "flowpaths", "network", "nexus", "virtual_nexus", "virtual_flowpaths", "waterbodies", "gages", "reference_flowpaths", "hydrolocations"],
               "source": source,
               }
 
     # Set output file path
-    gpkg_fp = os.path.join(output_dir, f"gauge_{basin}.gpkg")
+    gpkg_fp = os.path.join(output_dir, f"{file_prefix}{basin}.gpkg")
 
     # Call icefabric API endpoint to save geopackage
     try:
@@ -174,12 +168,12 @@ def call_icefabric_gpkg(
             # logger.info(f"Saved geopackage file from Icefabric API to {gpkg_fp}")
             print(f"Saved geopackage file from Icefabric API to {gpkg_fp}")
     except httpx.HTTPStatusError as e:
-        print(f"Icefabric API call gages-{basin} gpkg failed: {e}")
+        print(f"Icefabric API call {file_prefix}{basin} gpkg failed: {e}")
         # logger.critical(f"Icefabric API call gages-{basin} gpkg failed: {e}")
         raise
     except ValueError:
         # logger.critical(f"Icefabric API call did not return valid results for gpkg: gauge_{basin}")
-        print(f"Icefabric API call did not return valid results for gpkg: gauge_{basin}")
+        print(f"Icefabric API call did not return valid results for gpkg: {file_prefix}{basin}")
         raise
     except (OSError, IOError) as e:
         # logger.critical(f"Failed to write gpkg file: {e}")
