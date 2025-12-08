@@ -103,6 +103,106 @@ def init_ginput_logger():
     global logger
     logger = logging.getLogger(MODULE_NAME)
 
+<<<<<<< HEAD
+=======
+def call_icefabric_ipe(
+        mod: str,
+        all_mod: list,
+        basin: str,
+        domain: str,
+        ngen_cerf: bool,
+        envca: bool | None = None,
+        rootzone_aet: int | None = None,
+) -> dict:
+    """ Query icefabric API for initial parameter estimates
+
+    Parameters
+    ----------
+    mod: module name string
+    all_mod: list of all modules in the formulation
+    basin: basin name string
+    domain: string of name of gage domain
+    ngen_cerf: boolean flag for using ngencerf
+    envca: boolean flag for envca gage
+    rootzone_aet: boolean flag for cfe aetroozone flag
+
+    Returns
+    ----------
+    dictionary of initial parameter estimates
+    """
+    # Modify module names for icefabric
+    if mod in ('cfes', 'cfex'):
+        cfe_version = 'CFE-S' if mod == 'cfes' else 'CFE-X'
+        mod = 'cfe'
+    elif mod == 'noah':
+        mod = 'noahowp'
+    elif mod == 'sac':
+        mod = 'sacsma'
+
+    # Set base endpoint (use Optimization endpoint for ngencerf, test for standalone)
+    icefabric_env = "oe" if ngen_cerf else "test"
+    url = f"http://edfs.{icefabric_env}.nextgenwaterprediction.com:8000/v1/modules/{mod}/"
+
+    # Build query parameters
+    params = {"identifier": basin,
+              "domain": domain}
+
+    if mod == 'cfe':
+        params["cfe_version"] = cfe_version
+    if mod in ('lasam', 'cfe') and 'sft' in all_mod:
+        params["sft_included"] = True
+    if rootzone_aet == 1:
+        params["rootzone_aet"] = True
+    if mod in ('sacsma', 'ueb') and envca:
+        params["envca"] = True
+    if mod == 'sft' and 'cfex' not in all_mod:
+        params["use_schaake"] = True
+    if mod == 'smp':
+        module_map = {"cfes": "CFE-S", "cfex": "CFE-X", "lasam": "LASAM", "topmodel": "TopModel"}
+        match = set(all_mod).intersection(module_map.keys())
+        if len(match) != 1:
+            try:
+                raise Exception("One rainfall runoff model must be paired with SMP")
+            except Exception as e:
+                logger.critical(e)
+                raise
+        params["module"] = module_map[list(match)[0]]
+    if mod == 'lasam':
+        params["soil_params_file"] = "vG_default_params_HYDRUS.dat"
+
+    # Call icefabric API endpoint
+    try:
+        with httpx.Client(timeout=60.0) as client:
+            resp = client.get(url, params=params)
+            resp.raise_for_status()
+            ipe = resp.json()
+            logger.info(f"Retrieved parameters from Icefabric API for {mod}")
+    except httpx.HTTPStatusError as e:
+        logger.critical(f"Icefabric API call for {mod} failed: {e}")
+        raise
+    except ValueError:
+        logger.critical(f"Icefabric API call did not return valid results for {mod}")
+        raise
+
+    # Reformat IPE json by catchment, dropping None Values and catchment
+    ipe_formatted = {}
+    for item in ipe:
+        if mod == 'topoflow':
+            key = item['site_prefix']
+            drop_keys = set()
+        else:
+            key = item["catchment"]
+            drop_keys = {"catchment"}
+
+        ipe_formatted[key] = {
+            k: (",".join(str(x) for x in v) if isinstance(v, list) else v)
+            for k, v in item.items()
+            if k not in drop_keys and v is not None
+        }
+
+    # Return icefabric response
+    return ipe_formatted
+>>>>>>> 12db435 (Updated endpoint and added check for sufficient topoflow basins)
 
 def call_icefabric_gpkg(
         basin: str,
@@ -126,6 +226,7 @@ def call_icefabric_gpkg(
     dictionary of initial parameter estimates
     """
 
+<<<<<<< HEAD
     # TODO: Domain string in endpoint not yet implemented for NHF
 
     # Check for VPU or gage basin input string
@@ -147,6 +248,11 @@ def call_icefabric_gpkg(
 
     # Set base endpoint
     url = f"http://edfs.{environment}.nextgenwaterprediction.com:8000/v1/hydrofabric/{basin}/gpkg"
+=======
+    # Set base endpoint (use Optimization endpoint for ngencerf, test for standalone)
+    icefabric_env = "oe" if ngen_cerf else "test"
+    url = f"http://edfs.{icefabric_env}.nextgenwaterprediction.com:8000/v1/hydrofabric/gages-{basin}/gpkg"
+>>>>>>> 12db435 (Updated endpoint and added check for sufficient topoflow basins)
 
     # Build query parameters
     params = {"id_type": id_type,
