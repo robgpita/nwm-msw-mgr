@@ -483,7 +483,7 @@ class RealizationBuilder:
         self.parallelSec = self.input_configs.get('Parallel')
 
         # Use parallel ngen only when the number of processors is greater than 1
-        if not self.parallelSec or self.parallelSec.get("nprocs", 0) < 2:
+        if not isinstance(self.parallelSec, dict) or (self.parallelSec.get("nprocs") or 0) < 2:
             self.parallelSec = None
 
     def _create_input_dir(self):
