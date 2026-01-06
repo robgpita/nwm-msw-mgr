@@ -103,6 +103,7 @@ def init_ginput_logger():
     global logger
     logger = logging.getLogger(MODULE_NAME)
 
+
 def call_icefabric_gpkg(
         basin: str,
         domain: str,
@@ -843,8 +844,6 @@ def create_sft_smp_input(
         dfa: gpd.GeoDataFrame,
         sft_dir: Union[str, Path],
         smp_dir: Union[str, Path],
-        sm_frac_depth: float,
-        sm_profile_depth: float,
         run_type: str,
         sm_frac_depth: float = 0.4,
         sm_profile_depth: List[float] = [0.1, 0.4, 1.0, 2.0],
