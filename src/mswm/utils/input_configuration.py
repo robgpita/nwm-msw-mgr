@@ -1,13 +1,15 @@
+# fmt: off
 """
 This module contains Pydantic classes to validate input.config files for the MSWM
 
 @author: Jeff Wade
 """
 
+from pathlib import Path
+from typing import Literal, Optional, Union
+
 from pydantic import BaseModel, Field, field_validator, model_validator
 from pydantic_core.core_schema import ValidationInfo
-from pathlib import Path
-from typing import Optional, Literal, Union
 
 
 class StrictBaseModel(BaseModel):
@@ -159,6 +161,7 @@ class CalibConfig(StrictBaseModel):
     save_plot_iter: Optional[int] = None
     save_plot_iter_freq: Optional[int] = None
     streamflow_threshold: Optional[float] = None
+    peak_flow_threshold: Optional[float] = 90.0
     station_name: Optional[str] = None
     ngen_cerf: bool
     calibration_run_id: Optional[int] = None

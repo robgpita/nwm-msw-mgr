@@ -1,3 +1,4 @@
+# fmt: off
 """
 This module contains functions to manage the initial creation of configuration files
 
@@ -5,25 +6,25 @@ This module contains functions to manage the initial creation of configuration f
 """
 
 import copy
-from pathlib import Path
-import os
+import json
 import logging
-import re
 import math
+import os
+import re
+import shutil
+from collections import defaultdict
 from datetime import datetime
+from pathlib import Path
+
 import geopandas as gpd
 import pandas as pd
-import json
 import yaml
-from collections import defaultdict
 from pydantic import ValidationError, validate_call
-import shutil
 
 from mswm.utils import ginputfunc as gfun
 from mswm.utils import settings
-from mswm.utils.log_level import log_level_set, MODULE_NAME
 from mswm.utils.input_configuration import InputConfig
-
+from mswm.utils.log_level import MODULE_NAME, log_level_set
 
 # Initialize MSWM setup logger
 main_logger = logging.getLogger()
@@ -1622,6 +1623,7 @@ class RealizationBuilder:
         save_plot_iter = self.conf2.get('save_plot_iter') or 0
         save_plot_iter_freq = self.conf2.get('save_plot_iter_freq') or 0
         streamflow_threshold = self.conf2.get('streamflow_threshold') or 0.0
+        peak_flow_threshold = self.conf2.get('peak_flow_threshold') or 90.0
         user_email = self.conf2.get('user_email') or ''
 
         # Create calibration configuration file
@@ -1643,6 +1645,7 @@ class RealizationBuilder:
                                            'save_plot_iter_freq': save_plot_iter_freq,
                                            'basinID': self.conf1['basin'],
                                            'threshold': streamflow_threshold,
+                                           'peak_flow_threshold': peak_flow_threshold,
                                            'site_name': site_name,
                                            'user': user_email},
                            }
