@@ -58,7 +58,9 @@ class RealizationBuilder:
         This property can be changed after instantiating this class, before calling one of the `build_*_realization()` methods.
     """
 
-    def __init__(self, input_path: str | None = None, valid_yaml: str | None = None, use_cold_start: bool = False, forcing_path: str | None = None, fcst_run_name: str | None = None, config_overrides: InputConfig | None = None):
+    def __init__(self, input_path: str | None = None, valid_yaml: str | None = None, use_cold_start: bool = False, forcing_path: str | None = None, fcst_run_name: str | None = None,
+                 load_state_from: str | None = None, save_state: bool = False,
+                 config_overrides: InputConfig | None = None):
 
         # Private attributes controlled by public properties.
         self._config_overrides: InputConfig | None
@@ -86,6 +88,8 @@ class RealizationBuilder:
         self.use_cold_start = use_cold_start
         self.forcing_path = Path(forcing_path) if forcing_path else None
         self.fcst_run_name = fcst_run_name if fcst_run_name else None
+        self.load_state_from = Path(load_state_from) if load_state_from else None
+        self.save_state = save_state
 
         # Initialize this to empty dict so that config override has a target even when input_path is not used
         self.input_configs = {}
@@ -1407,6 +1411,57 @@ class RealizationBuilder:
 
         logger.info("Created BMI config files for all modules in each regionalization formulation")
 
+    def _configure_model_states(self):
+        """
+        Configure state saving configuration in state saving and loading realization sections
+        """
+        if not self.load_state_from and not self.save_state:
+            logger.info("No model state management configured.")
+
+        # Ensure model state directories exist
+        if self.save_state:
+            save_state_to = Path(self.input_dir) / "state_save"
+            save_state_to.mkdir(parents=True, exist_ok=True)
+            logger.info(f"State save directory: {save_state_to}")
+
+        if self.load_state_from:
+            if not self.load_state_from.exists():
+                logger.critical(f"State load directory does not exist: {self.load_state_from}")
+                raise
+            logger.info(f"State load directory: {self.load_state_from}")
+
+        # Initialize state saving array
+        state_saving = []
+
+        # Add state loading configuration if specified
+        if self.load_state_from:
+            load_config = {
+                "direction": "load",
+                "label": "State load",
+                "path": str(self.load_state_from),
+                "type": "FilePerUnit",
+                "when": "StartOfRun"
+            }
+            state_saving.append(load_config)
+            logger.info("Configured state loading at start of run")
+
+        # Add state saving configuration if specified
+        if self.save_state:
+            save_config = {
+                "direction": "save",
+                "label": "Save at end of run",
+                "path": str(save_state_to),
+                "type": "FilePerUnit",
+                "when": "EndOfRun"
+            }
+            state_saving.append(save_config)
+            logger.info("Configured state saving at end of run")
+
+        # Add state saving to real_config if there are entries
+        if state_saving:
+            self.real_config['state_saving'] = state_saving
+            logger.info("Model state configuration set in realization file")
+
     def _write_realization(self):
         """
         Write realization file for calibration and default runs
@@ -1681,6 +1736,7 @@ class RealizationBuilder:
         self._update_fcst_realization()
         self._update_fcst_noah_ueb_topo()
         self._update_fcst_troute()
+        self._configure_model_states()
         self._write_fcst_realization()
 
         if self.use_cold_start:
